@@ -1,0 +1,276 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/visa-bulletins.schema.json",
+  "title": "Visa Bulletin Archive (DOS Travel.State.Gov)",
+  "type": "object",
+  "required": ["dataset", "bulletins"],
+  "properties": {
+    "dataset": {
+      "type": "object",
+      "required": ["source", "generatedAt", "schemaVersion"],
+      "properties": {
+        "source": { "type": "string", "const": "travel.state.gov" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "schemaVersion": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "bulletins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/bulletin" }
+    }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "bulletin": {
+      "type": "object",
+      "required": ["id", "publication", "sources", "charts", "textBlocks"],
+      "properties": {
+        "id": {
+          "description": "Stable ID: YYYY-MM or YYYY-MM@revN if revised versions exist",
+          "type": "string"
+        },
+        "publication": {
+          "type": "object",
+          "required": ["month", "year"],
+          "properties": {
+            "month": { "type": "integer", "minimum": 1, "maximum": 12 },
+            "year": { "type": "integer", "minimum": 1990, "maximum": 2100 },
+            "volume": { "type": ["string", "null"] },
+            "number": { "type": ["string", "null"] },
+            "issueDate": { "type": ["string", "null"], "format": "date" },
+            "revisedDate": { "type": ["string", "null"], "format": "date" }
+          },
+          "additionalProperties": false
+        },
+        "sources": {
+          "type": "object",
+          "required": ["htmlUrl"],
+          "properties": {
+            "htmlUrl": { "type": "string", "format": "uri" },
+            "pdfUrl": { "type": ["string", "null"], "format": "uri" },
+            "printerFriendlyUrl": { "type": ["string", "null"], "format": "uri" }
+          },
+          "additionalProperties": false
+        },
+        "revision": {
+          "description": "Tracks superseded/revised bulletins (e.g., Oct 2015)",
+          "type": "object",
+          "properties": {
+            "isRevised": { "type": "boolean" },
+            "supersedes": { "type": ["string", "null"] },
+            "supersededBy": { "type": ["string", "null"] },
+            "revisionNote": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+
+        "charts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/chart" }
+        },
+
+        "textBlocks": {
+          "description": "Narrative + footnotes extracted from bulletin; used for reasoning evidence",
+          "type": "array",
+          "items": { "$ref": "#/$defs/textBlock" }
+        },
+
+        "anomalies": {
+          "description": "Computed outliers (optional; produced by your pipeline)",
+          "type": "array",
+          "items": { "$ref": "#/$defs/anomaly" }
+        },
+
+        "raw": {
+          "description": "Optional raw captures for reproducibility",
+          "type": "object",
+          "properties": {
+            "htmlSha256": { "type": ["string", "null"] },
+            "extractedAt": { "type": ["string", "null"], "format": "date-time" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "chart": {
+      "type": "object",
+      "required": ["system", "chartType", "title", "columns", "rows", "cells"],
+      "properties": {
+        "system": { "type": "string", "enum": ["FAMILY", "EMPLOYMENT", "DIVERSITY", "OTHER"] },
+        "chartType": { "type": "string", "enum": ["FINAL_ACTION_DATES", "DATES_FOR_FILING", "CUTOFF_DATES", "UNKNOWN"] },
+        "title": { "type": "string" },
+
+        "schemaHint": {
+          "description": "Helps handle future table variations (new categories/columns)",
+          "type": "object",
+          "properties": {
+            "tableKey": { "type": ["string", "null"] },
+            "parserVersion": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/chargeabilityColumn" }
+        },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/categoryRow" }
+        },
+
+        "cells": {
+          "description": "Sparse-friendly matrix keyed by rowId + colId",
+          "type": "array",
+          "items": { "$ref": "#/$defs/cell" }
+        },
+
+        "notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+
+    "chargeabilityColumn": {
+      "type": "object",
+      "required": ["colId", "label"],
+      "properties": {
+        "colId": { "type": "string" },
+        "label": { "type": "string" },
+        "aliases": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+
+    "categoryRow": {
+      "type": "object",
+      "required": ["rowId", "label"],
+      "properties": {
+        "rowId": { "type": "string" },
+        "label": { "type": "string" },
+        "group": { "type": ["string", "null"] },
+        "preferenceCode": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+
+    "cell": {
+      "type": "object",
+      "required": ["rowId", "colId", "value"],
+      "properties": {
+        "rowId": { "type": "string" },
+        "colId": { "type": "string" },
+        "value": { "$ref": "#/$defs/cutoffValue" },
+
+        "rawText": { "type": ["string", "null"] },
+        "sourceRef": {
+          "description": "Optional: pointer into textBlocks or HTML line offsets",
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "cutoffValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "status"],
+          "properties": {
+            "kind": { "const": "STATUS" },
+            "status": { "type": "string", "enum": ["C", "U", "NA", "UNKNOWN"] }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "date"],
+          "properties": {
+            "kind": { "const": "DATE" },
+            "date": { "type": "string", "format": "date" },
+            "asOfText": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+
+    "textBlock": {
+      "type": "object",
+      "required": ["blockId", "type", "heading", "text"],
+      "properties": {
+        "blockId": { "type": "string" },
+        "type": { "type": "string", "enum": ["INTRO", "NARRATIVE", "FOOTNOTE", "UPDATE_NOTICE", "DEFINITIONS", "OTHER"] },
+        "heading": { "type": ["string", "null"] },
+        "text": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "mentions": {
+          "description": "Entities/keywords found (retrogression, annual limit, DHS, USCIS, etc.)",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "anomaly": {
+      "type": "object",
+      "required": ["anomalyId", "kind", "scope", "details", "evidence"],
+      "properties": {
+        "anomalyId": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "RETROGRESSION",
+            "LARGE_FORWARD_JUMP",
+            "STATUS_FLIP",
+            "STRUCTURE_CHANGE",
+            "REVISED_BULLETIN",
+            "MIDYEAR_UPDATE",
+            "CATEGORY_UNAVAILABLE",
+            "OTHER"
+          ]
+        },
+        "scope": {
+          "type": "object",
+          "required": ["system", "chartType"],
+          "properties": {
+            "system": { "type": "string" },
+            "chartType": { "type": "string" },
+            "rowId": { "type": ["string", "null"] },
+            "colId": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "details": {
+          "type": "object",
+          "properties": {
+            "prev": { "type": ["string", "null"] },
+            "next": { "type": ["string", "null"] },
+            "deltaDays": { "type": ["number", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "evidence": {
+          "description": "Links anomaly to extracted bulletin textBlocks",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["blockId", "matchSnippets"],
+            "properties": {
+              "blockId": { "type": "string" },
+              "matchSnippets": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

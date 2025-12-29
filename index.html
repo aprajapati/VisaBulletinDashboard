@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visa Bulletin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+  <div class="orb orb-3" aria-hidden="true"></div>
+
+  <main class="shell">
+    <header class="topbar reveal" style="--delay: 0s">
+      <div class="brand">
+        <div class="logo">VB</div>
+        <div>
+          <p class="eyebrow">Visa Bulletin Intelligence</p>
+          <h1>Visa Bulletin Dashboard</h1>
+          <p class="subhead">Track monthly movement for family and employment categories.</p>
+        </div>
+      </div>
+      <div class="status">
+        <div class="status-card">
+          <span class="status-label">Selected View</span>
+          <div class="status-value" id="statusValue">Loading data...</div>
+          <span class="status-date" id="statusDate">Parsing visa_bulletins.all.json</span>
+        </div>
+        <div class="status-pill" id="statusPill">Final Action</div>
+      </div>
+    </header>
+
+    <section class="control-panel reveal" style="--delay: 0.1s">
+      <div class="panel">
+        <h2>Filters</h2>
+        <div class="filters-grid">
+          <label class="field">
+            <span>Region</span>
+            <select id="regionSelect" disabled>
+              <option>Loading...</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>System</span>
+            <select id="categorySelect" disabled>
+              <option>Loading...</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Preference</span>
+            <select id="preferenceSelect" disabled>
+              <option>Loading...</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Time Window</span>
+            <input type="range" id="windowRange" min="6" max="12" step="1" value="12" />
+            <span class="range-value" id="windowValue">12 months</span>
+          </label>
+          <div class="field">
+            <span>Metric</span>
+            <div class="segmented" role="group" aria-label="Metric">
+              <button type="button" class="segmented-btn is-active" data-metric="final" aria-pressed="true">Final Action</button>
+              <button type="button" class="segmented-btn" data-metric="filing" aria-pressed="false">Dates for Filing</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel insights">
+        <h2>Highlights</h2>
+        <ul>
+          <li>Family categories show steady gains in most regions.</li>
+          <li>Employment momentum slows in Asia-heavy backlogs.</li>
+          <li>Filing dates remain ahead of final action across the board.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="kpis">
+      <div class="kpi-card reveal" style="--delay: 0.2s">
+        <span class="kpi-label" id="kpiCurrentLabel">Current Final Action</span>
+        <div class="kpi-value" id="kpiCurrent">--</div>
+        <span class="kpi-note" id="kpiCurrentNote">Based on latest bulletin</span>
+      </div>
+      <div class="kpi-card reveal" style="--delay: 0.25s">
+        <span class="kpi-label">Quarter Momentum</span>
+        <div class="kpi-value" id="kpiQuarter">--</div>
+        <span class="kpi-note">Last 3 months change</span>
+      </div>
+      <div class="kpi-card reveal" style="--delay: 0.3s">
+        <span class="kpi-label">Year to Date</span>
+        <div class="kpi-value" id="kpiYtd">--</div>
+        <span class="kpi-note">Since January</span>
+      </div>
+      <div class="kpi-card reveal" style="--delay: 0.35s">
+        <span class="kpi-label">Filing Gap</span>
+        <div class="kpi-value" id="kpiGap">--</div>
+        <span class="kpi-note">Filing minus final action</span>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card chart-card reveal" style="--delay: 0.4s">
+        <div class="card-header">
+          <h3>Priority Date Movement</h3>
+          <span class="chip" id="movementChip">12 months</span>
+        </div>
+        <div id="movementChart" class="chart" role="img" aria-label="Line chart of priority date movement"></div>
+      </div>
+      <div class="card chart-card reveal" style="--delay: 0.45s">
+        <div class="card-header">
+          <h3>Cutoff by Preference</h3>
+          <span class="chip">Latest month</span>
+        </div>
+        <div id="cutoffChart" class="chart" role="img" aria-label="Bar chart of current cutoff spread"></div>
+      </div>
+      <div class="card chart-card reveal" style="--delay: 0.5s">
+        <div class="card-header">
+          <h3>Backlog Mix</h3>
+          <span class="chip" id="backlogChip">Selected category</span>
+        </div>
+        <div id="backlogChart" class="chart" role="img" aria-label="Doughnut chart of backlog mix"></div>
+      </div>
+      <div class="card table-card reveal" style="--delay: 0.55s">
+        <div class="card-header">
+          <h3>Preference Snapshot</h3>
+          <span class="chip" id="snapshotChip">All categories</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Preference</th>
+              <th>Final Action</th>
+              <th>Dates for Filing</th>
+              <th>3M Change</th>
+            </tr>
+          </thead>
+          <tbody id="snapshotTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
